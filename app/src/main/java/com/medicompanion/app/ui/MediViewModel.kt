@@ -11,12 +11,6 @@ import kotlinx.coroutines.launch
 class MediViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = BpRepository(app)
 
-    init {
-        viewModelScope.launch {
-            try { repo.seedChartData() } catch (_: Exception) {}
-        }
-    }
-
     private val _from = MutableStateFlow<String?>(null)
     private val _to = MutableStateFlow<String?>(null)
 
@@ -40,6 +34,6 @@ class MediViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun delete(id: String) { viewModelScope.launch { repo.delete(id) } }
-    fun reseed() { viewModelScope.launch { repo.forceSeed(); _msg.value = "Seeded ${repo.count()} entries" } }
+    fun update(entry: com.medicompanion.app.data.BpEntry) { viewModelScope.launch { repo.update(entry); _msg.value = "Updated" } }
     fun consumeMsg() { _msg.value = null }
 }

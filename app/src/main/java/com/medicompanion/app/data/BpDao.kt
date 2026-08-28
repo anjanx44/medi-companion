@@ -14,6 +14,9 @@ interface BpDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entry: BpEntry)
 
+    @Update
+    suspend fun update(entry: BpEntry)
+
     @Query("SELECT COUNT(*) FROM bp_entries")
     suspend fun count(): Int
 

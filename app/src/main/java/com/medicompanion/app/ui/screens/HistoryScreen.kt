@@ -1,18 +1,22 @@
 package com.medicompanion.app.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.medicompanion.app.data.BpEntry
 import java.time.LocalDate
@@ -22,10 +26,11 @@ private val displayFmt = DateTimeFormatter.ofPattern("dd/MM (EEE)")
 private val isoFmt = DateTimeFormatter.ISO_LOCAL_DATE
 
 @Composable
-fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (String?, String?) -> Unit, onReseed: (() -> Unit)? = null) {
+fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: (BpEntry) -> Unit, onRange: (String?, String?) -> Unit) {
     val ctx = LocalContext.current
     var from by remember { mutableStateOf<LocalDate?>(null) }
     var to by remember { mutableStateOf<LocalDate?>(null) }
+    var editing by remember { mutableStateOf<BpEntry?>(null) }
 
     fun pickFrom() {
         val d = from ?: LocalDate.now()
@@ -36,14 +41,40 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (
         DatePickerDialog(ctx, { _, y, m, day -> to = LocalDate.of(y, m + 1, day); onRange(from?.format(isoFmt), to?.format(isoFmt)) }, d.year, d.monthValue - 1, d.dayOfMonth).show()
     }
 
-    // Group by date for chart-table: 1 row per date, 2 cols
     val byDate = entries.groupBy { it.date }
     val sortedDates = if (from != null && to != null) {
         byDate.keys.sorted()
     } else {
-        // Show 22/08–05/09 range like paper chart, plus any extra dates
         val chartRange = (0..14).map { LocalDate.of(2026, 8, 22).plusDays(it.toLong()).format(isoFmt) }
         (chartRange + byDate.keys).distinct().sorted()
+    }
+
+    // Edit dialog
+    editing?.let { e ->
+        var sys by remember(e) { mutableStateOf(e.systolic.toString()) }
+        var dia by remember(e) { mutableStateOf(e.diastolic.toString()) }
+        var pulse by remember(e) { mutableStateOf(e.pulse?.toString() ?: "") }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Edit ${e.date} ${if (e.timeSlot == "MORNING") "Morning" else "Evening"}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = sys, onValueChange = { sys = it.filter(Char::isDigit).take(3) }, label = { Text("Systolic") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    OutlinedTextField(value = dia, onValueChange = { dia = it.filter(Char::isDigit).take(3) }, label = { Text("Diastolic") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    OutlinedTextField(value = pulse, onValueChange = { pulse = it.filter(Char::isDigit).take(3) }, label = { Text("Pulse (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val s = sys.toIntOrNull(); val d = dia.toIntOrNull()
+                    if (s != null && d != null) {
+                        onUpdate(e.copy(systolic = s, diastolic = d, pulse = pulse.toIntOrNull()))
+                        editing = null
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } }
+        )
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
@@ -57,23 +88,18 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (
         Spacer(Modifier.height(12.dp))
 
         if (entries.isEmpty() && from == null && to == null) {
-            Text("No entries yet — seed loads 22–28/08 on first launch.", style = MaterialTheme.typography.bodyMedium)
-        }
-        if (onReseed != null && entries.size < 13) {
-            Button(onClick = onReseed, modifier = Modifier.fillMaxWidth()) { Text("Re-seed 22–28/08 (13 entries)") }
-            Spacer(Modifier.height(8.dp))
+            Text("No entries yet — add via Input.", style = MaterialTheme.typography.bodyMedium)
         }
 
-        // Chart table header
         Card {
             Column(Modifier.horizontalScroll(rememberScrollState())) {
                 Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Date", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
                     Text("Morning 09:15", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
                     Text("Evening 21:45", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
-                    Text("", modifier = Modifier.width(40.dp))
+                    Text("Actions", modifier = Modifier.width(80.dp), style = MaterialTheme.typography.labelLarge)
                 }
-                Divider()
+                HorizontalDivider()
                 LazyColumn {
                     items(sortedDates) { date ->
                         val morning = byDate[date]?.find { it.timeSlot == "MORNING" }
@@ -82,30 +108,35 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (
                         val label = try { LocalDate.parse(date).format(displayFmt) } catch (_: Exception) { date }
                         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text((if (isVisit) "⭐ " else "") + label, modifier = Modifier.width(110.dp), style = MaterialTheme.typography.bodyMedium)
-                            Box(Modifier.width(110.dp)) {
+                            Box(Modifier.width(110.dp).clickable(enabled = morning != null) { morning?.let { editing = it } }) {
                                 if (morning != null) {
                                     val high = morning.systolic > 150 || morning.diastolic > 90
                                     Text("${morning.systolic}/${morning.diastolic}" + (morning.pulse?.let { " · $it" } ?: ""), color = if (high) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                                 } else Text("—", style = MaterialTheme.typography.bodyMedium)
                             }
-                            Box(Modifier.width(110.dp)) {
+                            Box(Modifier.width(110.dp).clickable(enabled = evening != null) { evening?.let { editing = it } }) {
                                 if (evening != null) {
                                     val high = evening.systolic > 150 || evening.diastolic > 90
                                     Text("${evening.systolic}/${evening.diastolic}" + (evening.pulse?.let { " · $it" } ?: ""), color = if (high) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                                 } else Text("—", style = MaterialTheme.typography.bodyMedium)
                             }
-                            Row(Modifier.width(40.dp)) {
-                                // Delete actions per slot if exists
-                                if (morning != null) IconButton(onClick = { onDelete(morning.id) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete morning", modifier = Modifier.size(16.dp)) }
-                                if (evening != null) IconButton(onClick = { onDelete(evening.id) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete evening", modifier = Modifier.size(16.dp)) }
+                            Row(Modifier.width(80.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                if (morning != null) {
+                                    IconButton(onClick = { editing = morning }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit morning", modifier = Modifier.size(16.dp)) }
+                                    IconButton(onClick = { onDelete(morning.id) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete morning", modifier = Modifier.size(16.dp)) }
+                                }
+                                if (evening != null) {
+                                    IconButton(onClick = { editing = evening }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit evening", modifier = Modifier.size(16.dp)) }
+                                    IconButton(onClick = { onDelete(evening.id) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete evening", modifier = Modifier.size(16.dp)) }
+                                }
                             }
                         }
-                        if (sortedDates.last() != date) Divider()
+                        if (sortedDates.last() != date) HorizontalDivider()
                     }
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("⭐ = visit day · Tap morning/evening to edit via Input (same date+slot overwrites not yet, delete then re-add)", style = MaterialTheme.typography.bodySmall)
+        Text("Tap value or ✏️ to edit · 🗑️ to delete · ⭐ = visit day", style = MaterialTheme.typography.bodySmall)
     }
 }

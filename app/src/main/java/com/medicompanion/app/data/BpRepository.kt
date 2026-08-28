@@ -48,24 +48,11 @@ class BpRepository(context: Context) {
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
+    suspend fun update(entry: BpEntry): Result<Unit> = try {
+        dao.update(entry)
+        try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}
+        Result.success(Unit)
+    } catch (e: Exception) { Result.failure(e) }
+
     suspend fun count(): Int = dao.count()
-
-    suspend fun seedChartData(): Int {
-        // If DB has old schema/missing slots (count != 13), clear and reseed all
-        if (dao.count() == BP_CHART_SEED.size) return 0
-        if (dao.count() > 0) dao.clearAll()
-        var inserted = 0
-        for (base in BP_CHART_SEED) {
-            val entry = base.copy(id = java.util.UUID.randomUUID().toString(), createdAt = System.currentTimeMillis() + inserted)
-            dao.upsert(entry)
-            try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}
-            inserted++
-        }
-        return inserted
-    }
-
-    suspend fun forceSeed(): Int {
-        dao.clearAll()
-        return seedChartData()
-    }
 }
