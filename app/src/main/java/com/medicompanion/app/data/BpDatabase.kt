@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [BpEntry::class], version = 1, exportSchema = false)
+@Database(entities = [BpEntry::class], version = 2, exportSchema = false)
 abstract class BpDatabase : RoomDatabase() {
     abstract fun bpDao(): BpDao
 

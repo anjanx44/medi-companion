@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     Surface(modifier = Modifier.padding(pad)) {
                         when (tab) {
-                            0 -> InputScreen(onSave = { d, s, dia, p -> vm.add(d, s, dia, p) })
+                            0 -> InputScreen(onSave = { d, slot, s, dia, p -> vm.add(d, slot, s, dia, p) })
                             else -> HistoryScreen(entries = entries, onDelete = vm::delete, onRange = vm::setRange)
                         }
                     }

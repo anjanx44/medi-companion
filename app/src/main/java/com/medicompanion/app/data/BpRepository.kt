@@ -34,8 +34,8 @@ class BpRepository(context: Context) {
         awaitClose { reg.remove() }
     }
 
-    suspend fun add(date: String, systolic: Int, diastolic: Int, pulse: Int?): Result<Unit> = try {
-        val entry = BpEntry(id = UUID.randomUUID().toString(), date = date, systolic = systolic, diastolic = diastolic, pulse = pulse)
+    suspend fun add(date: String, timeSlot: String, systolic: Int, diastolic: Int, pulse: Int?): Result<Unit> = try {
+        val entry = BpEntry(id = UUID.randomUUID().toString(), date = date, timeSlot = timeSlot, systolic = systolic, diastolic = diastolic, pulse = pulse)
         dao.upsert(entry)
         // best-effort Firestore sync — don't fail if offline
         try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}

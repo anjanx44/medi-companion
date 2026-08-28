@@ -30,9 +30,9 @@ class MediViewModel(app: Application) : AndroidViewModel(app) {
     private val _msg = MutableStateFlow<String?>(null)
     val msg: StateFlow<String?> = _msg
 
-    fun add(date: String, sys: Int, dia: Int, pulse: Int?) {
+    fun add(date: String, timeSlot: String, sys: Int, dia: Int, pulse: Int?) {
         viewModelScope.launch {
-            val r = repo.add(date, sys, dia, pulse)
+            val r = repo.add(date, timeSlot, sys, dia, pulse)
             _msg.value = if (r.isSuccess) {
                 if (sys > 150 || dia > 90) "Saved — high BP, consider Amlocal" else "Saved"
             } else "Failed: ${r.exceptionOrNull()?.message}"
