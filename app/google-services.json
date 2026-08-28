@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "medi-companion",
+    "storage_bucket": "spendly-d0466.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:842777442851:android:49971b4edcd628db4b4f96",
+        "android_client_info": {
+          "package_name": "com.medicompanion.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsT__htnkQ0jIbcHYsyLMjMUWtzwrve0o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
