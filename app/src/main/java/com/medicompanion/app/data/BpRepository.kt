@@ -51,7 +51,9 @@ class BpRepository(context: Context) {
     suspend fun count(): Int = dao.count()
 
     suspend fun seedChartData(): Int {
-        if (dao.count() > 0) return 0
+        // If DB has old schema/missing slots (count != 13), clear and reseed all
+        if (dao.count() == BP_CHART_SEED.size) return 0
+        if (dao.count() > 0) dao.clearAll()
         var inserted = 0
         for (base in BP_CHART_SEED) {
             val entry = base.copy(id = java.util.UUID.randomUUID().toString(), createdAt = System.currentTimeMillis() + inserted)
@@ -60,5 +62,10 @@ class BpRepository(context: Context) {
             inserted++
         }
         return inserted
+    }
+
+    suspend fun forceSeed(): Int {
+        dao.clearAll()
+        return seedChartData()
     }
 }

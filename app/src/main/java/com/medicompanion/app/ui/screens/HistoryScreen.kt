@@ -22,7 +22,7 @@ private val displayFmt = DateTimeFormatter.ofPattern("dd/MM (EEE)")
 private val isoFmt = DateTimeFormatter.ISO_LOCAL_DATE
 
 @Composable
-fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (String?, String?) -> Unit) {
+fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (String?, String?) -> Unit, onReseed: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var from by remember { mutableStateOf<LocalDate?>(null) }
     var to by remember { mutableStateOf<LocalDate?>(null) }
@@ -58,6 +58,10 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onRange: (
 
         if (entries.isEmpty() && from == null && to == null) {
             Text("No entries yet — seed loads 22–28/08 on first launch.", style = MaterialTheme.typography.bodyMedium)
+        }
+        if (onReseed != null && entries.size < 13) {
+            Button(onClick = onReseed, modifier = Modifier.fillMaxWidth()) { Text("Re-seed 22–28/08 (13 entries)") }
+            Spacer(Modifier.height(8.dp))
         }
 
         // Chart table header

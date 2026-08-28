@@ -40,5 +40,6 @@ class MediViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun delete(id: String) { viewModelScope.launch { repo.delete(id) } }
+    fun reseed() { viewModelScope.launch { repo.forceSeed(); _msg.value = "Seeded ${repo.count()} entries" } }
     fun consumeMsg() { _msg.value = null }
 }
