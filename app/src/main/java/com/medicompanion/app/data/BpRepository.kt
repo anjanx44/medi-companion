@@ -47,4 +47,18 @@ class BpRepository(context: Context) {
         try { col.document(id).delete().await() } catch (_: Exception) {}
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
+
+    suspend fun count(): Int = dao.count()
+
+    suspend fun seedChartData(): Int {
+        if (dao.count() > 0) return 0
+        var inserted = 0
+        for (base in BP_CHART_SEED) {
+            val entry = base.copy(id = java.util.UUID.randomUUID().toString(), createdAt = System.currentTimeMillis() + inserted)
+            dao.upsert(entry)
+            try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}
+            inserted++
+        }
+        return inserted
+    }
 }

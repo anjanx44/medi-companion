@@ -1,13 +1,32 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "medi-companion",
-    "storage_bucket": "spendly-d0466.firebasestorage.app"
+    "project_number": "680233582426",
+    "project_id": "bp-companion-bd",
+    "storage_bucket": "bp-companion-bd.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:842777442851:android:49971b4edcd628db4b4f96",
+        "mobilesdk_app_id": "1:680233582426:android:3eb8ac99b9a9a287ff3d63",
+        "android_client_info": {
+          "package_name": "com.bpcompanion.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWkG69JbGoASR5bUVHyxu0aVIEDR6472M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680233582426:android:5999a8f5ec2961d0ff3d63",
         "android_client_info": {
           "package_name": "com.medicompanion.app"
         }
@@ -15,7 +34,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCsT__htnkQ0jIbcHYsyLMjMUWtzwrve0o"
+          "current_key": "AIzaSyBWkG69JbGoASR5bUVHyxu0aVIEDR6472M"
         }
       ],
       "services": {
