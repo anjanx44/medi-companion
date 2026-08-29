@@ -38,7 +38,10 @@ fun InputScreen(onSave: (date: String, timeSlot: String, sys: Int, dia: Int, pul
         OutlinedTextField(value = pulse, onValueChange = { pulse = it.filter(Char::isDigit).take(3) }, label = { Text("Pulse (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         Button(onClick = {
             val s = sys.toIntOrNull(); val d = dia.toIntOrNull()
-            if (s != null && d != null) onSave(date.format(fmt), slot, s, d, pulse.toIntOrNull())
+            if (s != null && d != null) {
+                onSave(date.format(fmt), slot, s, d, pulse.toIntOrNull())
+                sys = ""; dia = ""; pulse = ""
+            }
         }, modifier = Modifier.fillMaxWidth(), enabled = sys.toIntOrNull() != null && dia.toIntOrNull() != null) { Text("Save") }
         Text("Tip: same hand, seated, 5 min rest. High >150/90 shows hint.", style = MaterialTheme.typography.bodySmall)
     }
