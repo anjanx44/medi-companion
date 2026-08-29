@@ -13,7 +13,7 @@ abstract class BpDatabase : RoomDatabase() {
         @Volatile private var INSTANCE: BpDatabase? = null
         fun get(context: Context): BpDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(context.applicationContext, BpDatabase::class.java, "medi_companion.db")
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigrationOnDowngrade()
                 .build().also { INSTANCE = it }
         }
     }
