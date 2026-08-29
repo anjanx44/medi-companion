@@ -49,16 +49,28 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
         afterFrom && beforeTo
     }.sortedDescending()
 
-    // Edit dialog
+    // Edit dialog — with date + slot + delete
     editing?.let { e ->
         var sys by remember(e) { mutableStateOf(e.systolic.toString()) }
         var dia by remember(e) { mutableStateOf(e.diastolic.toString()) }
         var pulse by remember(e) { mutableStateOf(e.pulse?.toString() ?: "") }
+        var editDate by remember(e) { mutableStateOf(e.date) }
+        var editSlot by remember(e) { mutableStateOf(e.timeSlot) }
+        var showDatePicker by remember { mutableStateOf(false) }
+        if (showDatePicker) {
+            val init = try { LocalDate.parse(editDate) } catch (_: Exception) { LocalDate.now() }
+            DatePickerDialog(ctx, { _, y, m, d -> editDate = LocalDate.of(y, m + 1, d).format(isoFmt) }, init.year, init.monthValue - 1, init.dayOfMonth).apply { setOnDismissListener { showDatePicker = false }; show() }
+        }
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text("Edit ${e.date} ${if (e.timeSlot == "MORNING") "Morning" else "Evening"}") },
+            title = { Text("Edit entry") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) { Text(editDate) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = editSlot == "MORNING", onClick = { editSlot = "MORNING" }, label = { Text("🌅 Morning") })
+                        FilterChip(selected = editSlot == "EVENING", onClick = { editSlot = "EVENING" }, label = { Text("🌙 Evening") })
+                    }
                     OutlinedTextField(value = sys, onValueChange = { sys = it.filter(Char::isDigit).take(3) }, label = { Text("Systolic") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     OutlinedTextField(value = dia, onValueChange = { dia = it.filter(Char::isDigit).take(3) }, label = { Text("Diastolic") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     OutlinedTextField(value = pulse, onValueChange = { pulse = it.filter(Char::isDigit).take(3) }, label = { Text("Pulse (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
@@ -68,12 +80,17 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
                 TextButton(onClick = {
                     val s = sys.toIntOrNull(); val d = dia.toIntOrNull()
                     if (s != null && d != null) {
-                        onUpdate(e.copy(systolic = s, diastolic = d, pulse = pulse.toIntOrNull()))
+                        onUpdate(e.copy(date = editDate, timeSlot = editSlot, systolic = s, diastolic = d, pulse = pulse.toIntOrNull()))
                         editing = null
                     }
                 }) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } }
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { onDelete(e.id); editing = null }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = { editing = null }) { Text("Cancel") }
+                }
+            }
         )
     }
 
@@ -126,7 +143,7 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
                     Text("Date", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
                     Text("🌅 Morning 09:15", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
                     Text("🌙 Evening 21:45", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
-                    Text("Actions", modifier = Modifier.width(80.dp), style = MaterialTheme.typography.labelLarge)
+                    Text("Actions", modifier = Modifier.width(100.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 HorizontalDivider()
                 LazyColumn(modifier = Modifier.heightIn(max = 520.dp)) {
@@ -174,15 +191,16 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
                                     }
                                 } else Text("—", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Row(Modifier.width(80.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                            Row(Modifier.width(100.dp), horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
                                 if (morning != null) {
-                                    IconButton(onClick = { editing = morning }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit morning", modifier = Modifier.size(16.dp)) }
-                                    IconButton(onClick = { onDelete(morning.id) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete morning", modifier = Modifier.size(16.dp)) }
+                                    IconButton(onClick = { editing = morning }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit morning", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
+                                    IconButton(onClick = { onDelete(morning.id) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete morning", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
                                 }
                                 if (evening != null) {
-                                    IconButton(onClick = { editing = evening }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit evening", modifier = Modifier.size(16.dp)) }
-                                    IconButton(onClick = { onDelete(evening.id) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete evening", modifier = Modifier.size(16.dp)) }
+                                    IconButton(onClick = { editing = evening }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, contentDescription = "Edit evening", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
+                                    IconButton(onClick = { onDelete(evening.id) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete evening", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
                                 }
+                                if (morning == null && evening == null) Text("—", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         if (sortedDates.last() != date) HorizontalDivider()
