@@ -42,12 +42,12 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
     }
 
     val byDate = entries.groupBy { it.date }
-    val sortedDates = if (from != null && to != null) {
-        byDate.keys.sorted()
-    } else {
-        val chartRange = (0..14).map { LocalDate.of(2026, 8, 22).plusDays(it.toLong()).format(isoFmt) }
-        (chartRange + byDate.keys).distinct().sorted()
-    }
+    val sortedDates = byDate.keys.filter { date ->
+        val d = try { LocalDate.parse(date) } catch (_: Exception) { return@filter true }
+        val afterFrom = from?.let { d >= it } ?: true
+        val beforeTo = to?.let { d <= it } ?: true
+        afterFrom && beforeTo
+    }.sortedDescending()
 
     // Edit dialog
     editing?.let { e ->
@@ -77,48 +77,102 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
         )
     }
 
+    fun bpColor(sys: Int, dia: Int) = when {
+        sys >= 150 || dia >= 90 -> androidx.compose.ui.graphics.Color(0xFFE53935)
+        sys >= 140 || dia >= 90 -> androidx.compose.ui.graphics.Color(0xFFEF6C00)
+        sys >= 130 || dia >= 85 -> androidx.compose.ui.graphics.Color(0xFFFB8C00)
+        sys >= 120 && dia < 80 -> androidx.compose.ui.graphics.Color(0xFFF9A825)
+        sys in 90..120 && dia in 60..80 -> androidx.compose.ui.graphics.Color(0xFF43A047)
+        else -> androidx.compose.ui.graphics.Color(0xFF1E88E5)
+    }
+    fun bpLabel(sys: Int, dia: Int) = when {
+        sys >= 150 || dia >= 90 -> "Very High"
+        sys >= 140 || dia >= 90 -> "High"
+        sys >= 130 || dia >= 85 -> "High"
+        sys >= 120 && dia < 80 -> "Elevated"
+        sys in 90..120 && dia in 60..80 -> "Normal"
+        else -> "Low"
+    }
+
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("History — 15-day Chart", style = MaterialTheme.typography.titleLarge)
+        Text("History", style = MaterialTheme.typography.titleLarge)
+        Text("All entries — newest first · colorful BP levels", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = ::pickFrom) { Text(from?.format(isoFmt) ?: "From") }
             OutlinedButton(onClick = ::pickTo) { Text(to?.format(isoFmt) ?: "To") }
             if (from != null || to != null) TextButton(onClick = { from = null; to = null; onRange(null, null) }) { Text("Clear") }
         }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(onClick = {}, label = { Text("🟢 Normal") }, enabled = false)
+            AssistChip(onClick = {}, label = { Text("🟡 Elevated") }, enabled = false)
+            AssistChip(onClick = {}, label = { Text("🔴 High") }, enabled = false)
+        }
         Spacer(Modifier.height(12.dp))
 
-        if (entries.isEmpty() && from == null && to == null) {
-            Text("No entries yet — add via Input.", style = MaterialTheme.typography.bodyMedium)
-        }
-
+        if (entries.isEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Text("No entries yet — add via Input.", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
+            }
+        } else if (sortedDates.isEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Text("No entries in selected range.", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
         Card {
             Column(Modifier.horizontalScroll(rememberScrollState())) {
                 Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Date", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
-                    Text("Morning 09:15", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
-                    Text("Evening 21:45", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
+                    Text("🌅 Morning 09:15", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
+                    Text("🌙 Evening 21:45", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.labelLarge)
                     Text("Actions", modifier = Modifier.width(80.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 HorizontalDivider()
-                LazyColumn {
+                LazyColumn(modifier = Modifier.heightIn(max = 520.dp)) {
                     items(sortedDates) { date ->
                         val morning = byDate[date]?.find { it.timeSlot == "MORNING" }
                         val evening = byDate[date]?.find { it.timeSlot == "EVENING" }
                         val isVisit = date == "2026-08-26" || date == "2026-09-05"
+                        val isBaseline = date == "2026-08-22"
                         val label = try { LocalDate.parse(date).format(displayFmt) } catch (_: Exception) { date }
-                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text((if (isVisit) "⭐ " else "") + label, modifier = Modifier.width(110.dp), style = MaterialTheme.typography.bodyMedium)
+                        val rowBg = when {
+                            isBaseline -> androidx.compose.ui.graphics.Color(0xFFE8F5E9)
+                            isVisit -> androidx.compose.ui.graphics.Color(0xFFFFF3E0)
+                            else -> androidx.compose.ui.graphics.Color.Transparent
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 8.dp)
+                                .then(if (rowBg != androidx.compose.ui.graphics.Color.Transparent) Modifier else Modifier),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                (if (isVisit) "⭐ " else "") + label + if (isBaseline) " · baseline" else "",
+                                modifier = Modifier.width(110.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    isBaseline -> androidx.compose.ui.graphics.Color(0xFF2E7D32)
+                                    isVisit -> androidx.compose.ui.graphics.Color(0xFFE65100)
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
+                            )
                             Box(Modifier.width(110.dp).clickable(enabled = morning != null) { morning?.let { editing = it } }) {
                                 if (morning != null) {
-                                    val high = morning.systolic > 150 || morning.diastolic > 90
-                                    Text("${morning.systolic}/${morning.diastolic}" + (morning.pulse?.let { " · $it" } ?: ""), color = if (high) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
-                                } else Text("—", style = MaterialTheme.typography.bodyMedium)
+                                    val c = bpColor(morning.systolic, morning.diastolic)
+                                    androidx.compose.foundation.layout.Column {
+                                        Text("${morning.systolic}/${morning.diastolic}" + (morning.pulse?.let { " · $it" } ?: ""), color = c, style = MaterialTheme.typography.bodyMedium)
+                                        Text(bpLabel(morning.systolic, morning.diastolic), color = c.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                } else Text("—", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Box(Modifier.width(110.dp).clickable(enabled = evening != null) { evening?.let { editing = it } }) {
                                 if (evening != null) {
-                                    val high = evening.systolic > 150 || evening.diastolic > 90
-                                    Text("${evening.systolic}/${evening.diastolic}" + (evening.pulse?.let { " · $it" } ?: ""), color = if (high) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
-                                } else Text("—", style = MaterialTheme.typography.bodyMedium)
+                                    val c = bpColor(evening.systolic, evening.diastolic)
+                                    androidx.compose.foundation.layout.Column {
+                                        Text("${evening.systolic}/${evening.diastolic}" + (evening.pulse?.let { " · $it" } ?: ""), color = c, style = MaterialTheme.typography.bodyMedium)
+                                        Text(bpLabel(evening.systolic, evening.diastolic), color = c.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                } else Text("—", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Row(Modifier.width(80.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                                 if (morning != null) {
@@ -136,7 +190,8 @@ fun HistoryScreen(entries: List<BpEntry>, onDelete: (String) -> Unit, onUpdate: 
                 }
             }
         }
+        }
         Spacer(Modifier.height(8.dp))
-        Text("Tap value or ✏️ to edit · 🗑️ to delete · ⭐ = visit day", style = MaterialTheme.typography.bodySmall)
+        Text("⭐ visit · baseline green · tap value to edit · colors: Normal🟢 Elevated🟡 High🔴", style = MaterialTheme.typography.bodySmall)
     }
 }
