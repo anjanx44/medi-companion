@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 class MediViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = BpRepository(app)
 
+    val deviceId: String get() = repo.deviceId
+
     private val _from = MutableStateFlow<String?>(null)
     private val _to = MutableStateFlow<String?>(null)
 

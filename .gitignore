@@ -18,3 +18,9 @@ local.properties
 
 # Kotlin
 .kotlin/
+
+# Firebase service account (secret)
+scripts/*firebase-adminsdk*.json
+
+# Python
+__pycache__/

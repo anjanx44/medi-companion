@@ -11,8 +11,10 @@ import java.util.UUID
 
 class BpRepository(context: Context) {
 
+    val deviceId: String get() = _deviceId
+
     private val prefs = context.getSharedPreferences("medi_prefs", Context.MODE_PRIVATE)
-    private val deviceId: String = prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
+    private val _deviceId: String = prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
         prefs.edit().putString("device_id", it).apply()
     }
 

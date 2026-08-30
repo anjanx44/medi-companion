@@ -7,11 +7,15 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.medicompanion.app.ui.MediViewModel
 import com.medicompanion.app.ui.screens.HistoryScreen
 import com.medicompanion.app.ui.screens.InputScreen
@@ -37,13 +41,23 @@ private fun MainScreen(vm: MediViewModel) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val msg by vm.msg.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(msg) { msg?.let { snackbar.showSnackbar(it); vm.consumeMsg() } }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Medi Companion") })
+            CenterAlignedTopAppBar(
+                title = { Text("Medi Companion") },
+                actions = {
+                    IconButton(onClick = {
+                        clipboard.setText(AnnotatedString(vm.deviceId))
+                        scope.launch { snackbar.showSnackbar("Device ID copied: ${vm.deviceId.take(8)}…") }
+                    }) { Icon(Icons.Default.Info, contentDescription = "Copy Device ID") }
+                }
+            )
         },
         bottomBar = {
             NavigationBar {
