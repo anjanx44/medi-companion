@@ -2,16 +2,15 @@ package com.medicompanion.app.data
 
 import android.content.Context
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class BpRepository(context: Context) {
 
-    private val dao = BpDatabase.get(context).bpDao()
     private val prefs = context.getSharedPreferences("medi_prefs", Context.MODE_PRIVATE)
     private val deviceId: String = prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
         prefs.edit().putString("device_id", it).apply()
@@ -20,69 +19,34 @@ class BpRepository(context: Context) {
     private val db = FirebaseFirestore.getInstance()
     private val col get() = db.collection("users").document(deviceId).collection("bp_entries")
 
-    // Room is source of truth for UI (offline-first)
-    fun observeAll(): Flow<List<BpEntry>> = dao.observeAll()
-    fun observeRange(from: String, to: String): Flow<List<BpEntry>> = dao.observeRange(from, to)
-
-    // Firestore live sync (optional — merges into Room)
-    fun observeFirestore(): Flow<List<BpEntry>> = callbackFlow {
-        val reg = col.orderBy("createdAt", Query.Direction.DESCENDING).addSnapshotListener { snap, err ->
+    // Firebase is the single source of truth (live from the cloud, no local DB)
+    fun observeAll(): Flow<List<BpEntry>> = callbackFlow {
+        val reg = col.addSnapshotListener { snap, err ->
             if (err != null) { close(err); return@addSnapshotListener }
-            val items = snap?.documents?.mapNotNull { it.toObject(BpEntry::class.java)?.copy(id = it.id) } ?: emptyList()
+            val items = snap?.documents?.mapNotNull { it.toObject(BpEntry::class.java)?.copy(id = it.id) }
+                ?.sortedWith(compareByDescending<BpEntry> { it.date }.thenByDescending { it.createdAt })
+                ?: emptyList()
             trySend(items)
         }
         awaitClose { reg.remove() }
     }
 
+    fun observeRange(from: String, to: String): Flow<List<BpEntry>> =
+        observeAll().map { list -> list.filter { it.date in from..to } }
+
     suspend fun add(date: String, timeSlot: String, systolic: Int, diastolic: Int, pulse: Int?): Result<Unit> = try {
         val entry = BpEntry(id = UUID.randomUUID().toString(), date = date, timeSlot = timeSlot, systolic = systolic, diastolic = diastolic, pulse = pulse)
-        dao.upsert(entry)
-        // best-effort Firestore sync — don't fail if offline
-        try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}
+        col.document(entry.id).set(entry).await()
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
     suspend fun delete(id: String): Result<Unit> = try {
-        dao.deleteById(id)
-        try { col.document(id).delete().await() } catch (_: Exception) {}
+        col.document(id).delete().await()
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
 
     suspend fun update(entry: BpEntry): Result<Unit> = try {
-        dao.update(entry)
-        try { col.document(entry.id).set(entry).await() } catch (_: Exception) {}
+        col.document(entry.id).set(entry).await()
         Result.success(Unit)
     } catch (e: Exception) { Result.failure(e) }
-
-    suspend fun count(): Int = dao.count()
-
-    // 2-way sync: pull cloud, merge with local (newest createdAt wins), push both back
-    suspend fun sync(): Result<SyncSummary> = try {
-        val local = dao.getAll().associateBy { it.id }
-        val remote = try {
-            col.get().await().documents
-                .mapNotNull { it.toObject(BpEntry::class.java)?.copy(id = it.id) }
-        } catch (_: Exception) { emptyList() }
-
-        // merge: newest createdAt per id wins
-        val merged = (local.values + remote)
-            .groupBy { it.id }
-            .mapValues { (_, dupes) -> dupes.maxBy { it.createdAt } }
-            .values
-            .toList()
-
-        // write merged state back to both stores
-        dao.upsertAll(merged)
-        for (e in merged) {
-            try { col.document(e.id).set(e).await() } catch (_: Exception) {}
-        }
-
-        val added = merged.count { it.id !in local }
-        val updated = merged.count { it.id in local }
-        Result.success(SyncSummary(added, updated))
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
 }
-
-data class SyncSummary(val added: Int, val updated: Int)

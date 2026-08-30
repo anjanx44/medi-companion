@@ -8,11 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.medicompanion.app.ui.MediViewModel
 import com.medicompanion.app.ui.screens.HistoryScreen
@@ -38,7 +36,6 @@ private fun MainScreen(vm: MediViewModel) {
     var tab by remember { mutableStateOf(0) }
     val entries by vm.entries.collectAsStateWithLifecycle()
     val msg by vm.msg.collectAsStateWithLifecycle()
-    val syncing by vm.isSyncing.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(msg) { msg?.let { snackbar.showSnackbar(it); vm.consumeMsg() } }
@@ -46,18 +43,7 @@ private fun MainScreen(vm: MediViewModel) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Medi Companion") },
-                actions = {
-                    if (syncing) {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        IconButton(onClick = { vm.sync() }) {
-                            Icon(Icons.Default.Sync, contentDescription = "Sync with Firebase")
-                        }
-                    }
-                }
-            )
+            CenterAlignedTopAppBar(title = { Text("Medi Companion") })
         },
         bottomBar = {
             NavigationBar {
