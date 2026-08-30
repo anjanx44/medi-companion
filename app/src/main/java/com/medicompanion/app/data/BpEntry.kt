@@ -2,6 +2,7 @@ package com.medicompanion.app.data
 
 data class BpEntry(
     val id: String = "",
+    val userId: String = "",
     val date: String = "", // yyyy-MM-dd
     val timeSlot: String = "MORNING", // MORNING (09:15) / EVENING (21:45)
     val systolic: Int = 0,

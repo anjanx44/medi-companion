@@ -12,7 +12,20 @@
           "package_name": "com.medicompanion.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "680233582426-udho0evrruiaavhvf734fb5llupi7i0d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.medicompanion.app",
+            "certificate_hash": "1061755cc4aa699592d57d0bba290db9705639a3"
+          }
+        },
+        {
+          "client_id": "680233582426-bp66stu8nnt0infmuavoll2bi3sh0k8m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBWkG69JbGoASR5bUVHyxu0aVIEDR6472M"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "680233582426-bp66stu8nnt0infmuavoll2bi3sh0k8m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
