@@ -36,4 +36,20 @@ class MediViewModel(app: Application) : AndroidViewModel(app) {
     fun delete(id: String) { viewModelScope.launch { repo.delete(id) } }
     fun update(entry: com.medicompanion.app.data.BpEntry) { viewModelScope.launch { repo.update(entry); _msg.value = "Updated" } }
     fun consumeMsg() { _msg.value = null }
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing
+
+    fun sync() {
+        if (_isSyncing.value) return
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val r = repo.sync()
+            _isSyncing.value = false
+            _msg.value = r.fold(
+                onSuccess = { s -> "Sync OK — ${s.added} added, ${s.updated} updated" },
+                onFailure = { e -> "Sync failed: ${e.message ?: "unknown error"}" }
+            )
+        }
+    }
 }

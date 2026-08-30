@@ -55,4 +55,34 @@ class BpRepository(context: Context) {
     } catch (e: Exception) { Result.failure(e) }
 
     suspend fun count(): Int = dao.count()
+
+    // 2-way sync: pull cloud, merge with local (newest createdAt wins), push both back
+    suspend fun sync(): Result<SyncSummary> = try {
+        val local = dao.getAll().associateBy { it.id }
+        val remote = try {
+            col.get().await().documents
+                .mapNotNull { it.toObject(BpEntry::class.java)?.copy(id = it.id) }
+        } catch (_: Exception) { emptyList() }
+
+        // merge: newest createdAt per id wins
+        val merged = (local.values + remote)
+            .groupBy { it.id }
+            .mapValues { (_, dupes) -> dupes.maxBy { it.createdAt } }
+            .values
+            .toList()
+
+        // write merged state back to both stores
+        dao.upsertAll(merged)
+        for (e in merged) {
+            try { col.document(e.id).set(e).await() } catch (_: Exception) {}
+        }
+
+        val added = merged.count { it.id !in local }
+        val updated = merged.count { it.id in local }
+        Result.success(SyncSummary(added, updated))
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
+
+data class SyncSummary(val added: Int, val updated: Int)

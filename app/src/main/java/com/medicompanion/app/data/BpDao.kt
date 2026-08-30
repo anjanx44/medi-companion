@@ -11,8 +11,14 @@ interface BpDao {
     @Query("SELECT * FROM bp_entries ORDER BY date DESC, createdAt DESC")
     fun observeAll(): Flow<List<BpEntry>>
 
+    @Query("SELECT * FROM bp_entries")
+    suspend fun getAll(): List<BpEntry>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entry: BpEntry)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entries: List<BpEntry>)
 
     @Update
     suspend fun update(entry: BpEntry)
